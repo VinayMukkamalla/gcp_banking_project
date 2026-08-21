@@ -9,14 +9,6 @@ from airflow.providers.google.cloud.operators.bigquery import BigQueryExecuteQue
 DAG_FOLDER = os.path.dirname(os.path.abspath(__file__))
 CONFIG_PATH = os.path.join(DAG_FOLDER, 'config', 'pipeline_config.json')
 
-# 1/A. The Production Linux Path Standard
-# Cloud Composer mounts your DAG folder directly to '/home/airflow/gcs/dags' on Linux
-# DAGS_FOLDER = os.environ.get('AIRFLOW_HOME', '/home/airflow/gcs') + '/dags'
-# CONFIG_PATH = os.path.join(DAGS_FOLDER, 'config', 'pipeline_config.json')
-
-# No OS path calculations needed! Reads directly from the meta-database
-# cfg = Variable.get("banking_pipeline_config", deserialize_json=True)
-
 with open(CONFIG_PATH, 'r') as f:
     cfg = json.load(f)
 
@@ -45,6 +37,7 @@ with DAG(
     max_active_runs=1,
 ) as dag:
 
+    # TASK 1: Automatically extract the CSV from GCS and load it into the Raw Table
     load_gcs_to_raw = GCSToBigQueryOperator(
         task_id='load_gcs_to_raw_table',
         bucket=BUCKET,
@@ -56,6 +49,7 @@ with DAG(
         autodetect=True,
     )
 
+    # TASK 2: Execute SQL processing logic to push cleaned data into the Staging Layer
     transform_raw_to_staging = BigQueryExecuteQueryOperator(
         task_id='transform_raw_to_staging_cleaned',
         sql=f'''
@@ -76,12 +70,25 @@ with DAG(
         use_legacy_sql=False,
     )
 
+    # TASK 3: Load the cleaned staging data incrementally into the partitioned Production table
+    # Implements Partition Pruning to eliminate Full Table Scans and handles Upsert patterns
     upsert_staging_to_production = BigQueryExecuteQueryOperator(
         task_id='upsert_staging_to_production_fact',
         sql=f'''
             MERGE `{PROD_TARGET}` T
             USING `{STAGING_TARGET}` S
             ON T.transaction_id = S.transaction_id
+               AND DATE(T.transaction_timestamp) IN (SELECT DISTINCT DATE(transaction_timestamp) FROM `{STAGING_TARGET}`)
+            
+            -- 🔄 UPDATE MATCHED RECORDS: If amount, type, or location changed, update the row
+            WHEN MATCHED AND T.ingestion_timestamp < S.ingestion_timestamp THEN
+              UPDATE SET 
+                T.amount = S.amount,
+                T.transaction_type = S.transaction_type,
+                T.location = S.location,
+                T.ingestion_timestamp = S.ingestion_timestamp
+            
+            -- 📥 INSERT NEW RECORDS: If transaction ID doesn't exist, insert it safely
             WHEN NOT MATCHED THEN
               INSERT (transaction_id, account_id, amount, transaction_type, transaction_timestamp, location, ingestion_timestamp)
               VALUES (S.transaction_id, S.account_id, S.amount, S.transaction_type, S.transaction_timestamp, S.location, S.ingestion_timestamp);
@@ -89,7 +96,9 @@ with DAG(
         use_legacy_sql=False,
     )
 
+    # Define task dependency flow order
     load_gcs_to_raw >> transform_raw_to_staging >> upsert_staging_to_production
+
 
 
 
