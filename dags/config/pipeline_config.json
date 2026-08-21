@@ -1,0 +1,20 @@
+{
+    "environment": "prod",
+    "project_id": "gcp-data-engineer-501607",
+    "gcs_bucket_name": "gcp-data-engineer-501607-raw-banking-lake",
+    "source_file_path": "ingestion/daily_transactions.csv",
+    "datasets": {
+        "raw": "raw_banking",
+        "staging": "staging_banking",
+        "production": "prod_banking"
+    },
+    "tables": {
+        "raw_transactions": "transactions",
+        "staging_cleaned": "transactions_cleaned",
+        "production_fact": "fact_transactions"
+    },
+    "dag_settings": {
+        "retries": 2,
+        "retry_delay_minutes": 5
+    }
+}
