@@ -14,3 +14,11 @@ resource "google_bigquery_dataset" "staging_banking" {
   description   = "Contains intermediate cleaned and deduplicated views and tables"
   location      = var.region
 }
+
+# 3. Production Dataset - The final Star Schema for business metrics
+resource "google_bigquery_dataset" "prod_banking" {
+  dataset_id    = "prod_banking"
+  friendly_name = "Production Reporting Layer"
+  description   = "Final optimized tables, dimensions, and facts for business analytics"
+  location      = var.region
+}
