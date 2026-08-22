@@ -6,6 +6,7 @@
 *.tfplan
 .tfvars
 .tfvars.json
+longestSubstr.py
 
 crash.log
 
