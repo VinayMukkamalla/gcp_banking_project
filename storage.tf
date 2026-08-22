@@ -8,7 +8,7 @@ resource "google_storage_bucket" "data_lake" {
   # Prevents public access over the internet for security
   public_access_prevention = "enforced"
 
-  # Clean up old data after 30 days automatically to save your free tier credits
+  # Clean up old data after 30 days automatically
   lifecycle_rule {
     condition {
       age = 30
