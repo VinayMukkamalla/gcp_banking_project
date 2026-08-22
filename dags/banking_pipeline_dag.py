@@ -96,7 +96,7 @@ with DAG(
         use_legacy_sql=False,
     )
 
-    # Define task dependency flow order
+    # Define task dependency
     load_gcs_to_raw >> transform_raw_to_staging >> upsert_staging_to_production
 
 
