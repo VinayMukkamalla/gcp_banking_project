@@ -31,7 +31,7 @@ def generate_mock_banking_data(num_records=1000):
             
             writer.writerow([tx_id, acc_id, amount, tx_type, tx_time, loc])
             
-    print(f"Success! Saved raw mock data to {os.path.abspath(filename)}")
+    print(f"Success! Saved sample raw data to {os.path.abspath(filename)}")
 
 if __name__ == "__main__":
     generate_mock_banking_data(5000) # Generates 5,000 baseline rows
